@@ -4,29 +4,38 @@ from datetime import datetime, timedelta
 import pandas as pd
 import certifi
 
-# ------------------ PAGE CONFIG ------------------
-
+# ================= PAGE CONFIG =================
 st.set_page_config(page_title="Billing System", layout="wide")
 
-# ------------------ MongoDB Connection ------------------
+# ================= DATABASE CONNECTION =================
 
-MONGO_URI = "mongodb+srv://drshnanghan_db_user:7AxFQ4OPNDfmQVjj@cluster1.nsxghqy.mongodb.net/?appName=Cluster1"
+@st.cache_resource
+def get_collection():
+    client = MongoClient(
+        "mongodb+srv://drshnanghan_db_user:7AxFQ4OPNDfmQVjj@cluster1.nsxghqy.mongodb.net/?appName=Cluster1",
+        tls=True,
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=5000
+    )
+    db = client["billing_db"]
+    collection = db["bills"]
+    return collection
 
-client = MongoClient(
-    MONGO_URI,
-    tls=True,
-    tlsCAFile=certifi.where()
-)
+collection = get_collection()
 
-db = client["billing_db"]
-collection = db["bills"]
-collection.create_index("bill_number", unique=True)
+# Create unique index only once
+@st.cache_resource
+def ensure_index():
+    collection.create_index("bill_number", unique=True)
 
-# ------------------ Interest Calculation Function ------------------
+ensure_index()
+
+# ================= CALCULATION FUNCTION =================
 
 def calculate_interest(bill_date, bill_amount, due_days, payment_date, monthly_rate):
     due_date = bill_date + timedelta(days=due_days)
     delay_days = (payment_date - due_date).days
+
     if delay_days < 0:
         delay_days = 0
 
@@ -37,12 +46,10 @@ def calculate_interest(bill_date, bill_amount, due_days, payment_date, monthly_r
     return delay_days, interest, total_amount
 
 
-# ================= HEADER NAVIGATION ===================
+# ================= HEADER =================
 
 st.markdown(
-    """
-    <h1 style='text-align: center;'>📄 Billing Interest Management System</h1>
-    """,
+    "<h1 style='text-align: center;'>📄 Billing Interest Management System</h1>",
     unsafe_allow_html=True
 )
 
@@ -62,49 +69,56 @@ if menu == "Interest Calculator":
 
     st.subheader("🧮 Simple Interest Calculator")
 
-    col1, col2 = st.columns(2)
+    with st.form("calculator_form"):
 
-    with col1:
-        bill_date = st.date_input("Bill Date")
-        bill_amount = st.number_input("Bill Amount", min_value=0.0)
-        due_days = st.number_input("Due Days", min_value=0)
+        col1, col2 = st.columns(2)
 
-    with col2:
-        payment_date = st.date_input("Payment Date")
-        monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
+        with col1:
+            bill_date = st.date_input("Bill Date")
+            bill_amount = st.number_input("Bill Amount", min_value=0.0)
+            due_days = st.number_input("Due Days", min_value=0)
 
-    if st.button("Calculate Interest"):
+        with col2:
+            payment_date = st.date_input("Payment Date")
+            monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
 
+        calculate_btn = st.form_submit_button("Calculate Interest")
+
+    if calculate_btn:
         delay, interest, total = calculate_interest(
             bill_date, bill_amount, due_days, payment_date, monthly_rate
         )
 
         st.success(f"Delay Days: {delay}")
         st.success(f"Interest: ₹{interest:.2f}")
-
+        st.success(f"Total Amount: ₹{total:.2f}")
 
 # =========================================================
-# 2️⃣ STORE BILL (FULL INDEPENDENT PAGE)
+# 2️⃣ STORE BILL
 # =========================================================
 
 elif menu == "Store Bill":
 
     st.subheader("💾 Store Bill in Database")
 
-    col1, col2 = st.columns(2)
+    with st.form("store_form"):
 
-    with col1:
-        bill_number = st.text_input("Bill Number (Primary Key)")
-        party_name = st.text_input("Party Name")
-        bill_date = st.date_input("Bill Date")
-        bill_amount = st.number_input("Bill Amount", min_value=0.0)
-        due_days = st.number_input("Due Days", min_value=0)
+        col1, col2 = st.columns(2)
 
-    with col2:
-        payment_date = st.date_input("Payment Date")
-        monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
+        with col1:
+            bill_number = st.text_input("Bill Number (Primary Key)")
+            party_name = st.text_input("Party Name")
+            bill_date = st.date_input("Bill Date")
+            bill_amount = st.number_input("Bill Amount", min_value=0.0)
+            due_days = st.number_input("Due Days", min_value=0)
 
-    if st.button("Calculate & Save"):
+        with col2:
+            payment_date = st.date_input("Payment Date")
+            monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
+
+        save_btn = st.form_submit_button("Calculate & Save")
+
+    if save_btn:
 
         try:
             delay, interest, total = calculate_interest(
@@ -120,53 +134,61 @@ elif menu == "Store Bill":
                 "payment_date": datetime.combine(payment_date, datetime.min.time()),
                 "monthly_rate": monthly_rate,
                 "delay_days": delay,
-                "interest": interest
+                "interest": interest,
+                "total_amount": total
             }
 
             collection.insert_one(data)
 
             st.success("Bill saved successfully!")
-            st.info(f"Delay: {delay} days | Interest: ₹{interest:.2f}")
+            st.info(
+                f"Delay: {delay} days | Interest: ₹{interest:.2f} | Total: ₹{total:.2f}"
+            )
 
         except Exception as e:
             st.error(f"Error: {e}")
 
-
 # =========================================================
-# 3️⃣ VIEW RECORDS + SEARCH
+# 3️⃣ VIEW RECORDS
 # =========================================================
 
 elif menu == "View Records":
 
     st.subheader("📋 Billing Records")
 
-    col1, col2 = st.columns(2)
+    with st.form("search_form"):
+        col1, col2 = st.columns(2)
 
-    with col1:
-        search_bill = st.text_input("Search by Bill Number")
+        with col1:
+            search_bill = st.text_input("Search by Bill Number")
 
-    with col2:
-        search_party = st.text_input("Search by Party Name")
+        with col2:
+            search_party = st.text_input("Search by Party Name")
 
-    query = {}
+        search_btn = st.form_submit_button("Search")
 
-    if search_bill:
-        query["bill_number"] = search_bill
+    if search_btn:
 
-    if search_party:
-        query["party_name"] = {"$regex": search_party, "$options": "i"}
+        query = {}
 
-    records = list(collection.find(query, {"_id": 0}))
+        if search_bill:
+            query["bill_number"] = search_bill
 
-    if records:
-        df = pd.DataFrame(records)
+        if search_party:
+            query["party_name"] = {"$regex": search_party, "$options": "i"}
 
-        if "bill_date" in df.columns:
-            df["bill_date"] = df["bill_date"].astype(str)
-        if "payment_date" in df.columns:
-            df["payment_date"] = df["payment_date"].astype(str)
+        records = list(collection.find(query, {"_id": 0}))
 
-        st.dataframe(df, use_container_width=True)
+        if records:
+            df = pd.DataFrame(records)
 
-    else:
-        st.info("No records found.")
+            if "bill_date" in df.columns:
+                df["bill_date"] = df["bill_date"].astype(str)
+
+            if "payment_date" in df.columns:
+                df["payment_date"] = df["payment_date"].astype(str)
+
+            st.dataframe(df, use_container_width=True)
+
+        else:
+            st.info("No records found.")
