@@ -91,7 +91,6 @@ if menu == "Interest Calculator":
 
         st.success(f"Delay Days: {delay}")
         st.success(f"Interest: ₹{interest:.2f}")
-        st.success(f"Total Amount: ₹{total:.2f}")
 
 # =========================================================
 # 2️⃣ STORE BILL
@@ -134,15 +133,14 @@ elif menu == "Store Bill":
                 "payment_date": datetime.combine(payment_date, datetime.min.time()),
                 "monthly_rate": monthly_rate,
                 "delay_days": delay,
-                "interest": interest,
-                "total_amount": total
+                "interest": interest
             }
 
             collection.insert_one(data)
 
             st.success("Bill saved successfully!")
             st.info(
-                f"Delay: {delay} days | Interest: ₹{interest:.2f} | Total: ₹{total:.2f}"
+                f"Delay: {delay} days | Interest: ₹{interest:.2f}"
             )
 
         except Exception as e:
