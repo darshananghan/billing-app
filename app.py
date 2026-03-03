@@ -74,24 +74,32 @@ if menu == "Interest Calculator":
         col1, col2 = st.columns(2)
 
         with col1:
-            bill_date = st.date_input("Bill Date")
-            bill_amount = st.number_input("Bill Amount", min_value=0.0)
-            due_days = st.number_input("Due Days", min_value=0)
+            bill_date_str = st.text_input("Bill Date (DD-MM-YYYY)")
+            bill_amount = st.number_input("Bill Amount", value=None, placeholder="Enter amount")
+            due_days = st.number_input("Due Days", value=None, placeholder="Enter due days")
 
         with col2:
-            payment_date = st.date_input("Payment Date")
-            monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
+            payment_date_str = st.text_input("Payment Date (DD-MM-YYYY)")
+            monthly_rate = st.number_input("Monthly Interest Rate (%)", value=None, placeholder="Enter monthly rate")
 
         calculate_btn = st.form_submit_button("Calculate Interest")
 
     if calculate_btn:
-        delay, interest, total = calculate_interest(
-            bill_date, bill_amount, due_days, payment_date, monthly_rate
-        )
+        try:
+            bill_date = datetime.strptime(bill_date_str, "%d-%m-%Y")
+            payment_date = datetime.strptime(payment_date_str, "%d-%m-%Y")
 
-        st.success(f"Delay Days: {delay}")
-        st.success(f"Interest: ₹{interest:.2f}")
+            delay, interest, total = calculate_interest(
+                bill_date, bill_amount, due_days, payment_date, monthly_rate
+            )
 
+            st.success(f"Delay Days: {delay}")
+            st.success(f"Interest: ₹{interest:.2f}")
+
+        except:
+            st.error("Please enter dates in DD-MM-YYYY format.")
+            
+            
 # =========================================================
 # 2️⃣ STORE BILL
 # =========================================================
@@ -107,19 +115,21 @@ elif menu == "Store Bill":
         with col1:
             bill_number = st.text_input("Bill Number (Primary Key)")
             party_name = st.text_input("Party Name")
-            bill_date = st.date_input("Bill Date")
-            bill_amount = st.number_input("Bill Amount", min_value=0.0)
-            due_days = st.number_input("Due Days", min_value=0)
+            bill_date_str = st.text_input("Bill Date (DD-MM-YYYY)")
+            bill_amount = st.number_input("Bill Amount", value=None, placeholder="Enter amount")
+            due_days = st.number_input("Due Days", value=None, placeholder="Enter due days")
 
         with col2:
-            payment_date = st.date_input("Payment Date")
-            monthly_rate = st.number_input("Monthly Interest Rate (%)", min_value=0.0)
+            payment_date_str = st.text_input("Payment Date (DD-MM-YYYY)")
+            monthly_rate = st.number_input("Monthly Interest Rate (%)", value=None, placeholder="Enter rate")
 
         save_btn = st.form_submit_button("Calculate & Save")
 
     if save_btn:
-
         try:
+            bill_date = datetime.strptime(bill_date_str, "%d-%m-%Y")
+            payment_date = datetime.strptime(payment_date_str, "%d-%m-%Y")
+
             delay, interest, total = calculate_interest(
                 bill_date, bill_amount, due_days, payment_date, monthly_rate
             )
@@ -127,10 +137,10 @@ elif menu == "Store Bill":
             data = {
                 "bill_number": bill_number,
                 "party_name": party_name,
-                "bill_date": datetime.combine(bill_date, datetime.min.time()),
+                "bill_date": bill_date,
                 "bill_amount": bill_amount,
                 "due_days": due_days,
-                "payment_date": datetime.combine(payment_date, datetime.min.time()),
+                "payment_date": payment_date,
                 "monthly_rate": monthly_rate,
                 "delay_days": delay,
                 "interest": interest
@@ -139,13 +149,11 @@ elif menu == "Store Bill":
             collection.insert_one(data)
 
             st.success("Bill saved successfully!")
-            st.info(
-                f"Delay: {delay} days | Interest: ₹{interest:.2f}"
-            )
 
+        except ValueError:
+            st.error("Invalid date format. Please use DD-MM-YYYY.")
         except Exception as e:
             st.error(f"Error: {e}")
-
 # =========================================================
 # 3️⃣ VIEW RECORDS
 # =========================================================
