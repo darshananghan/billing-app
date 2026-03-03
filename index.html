@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bill Interest Calculator</title>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 500px;
+            margin: 40px auto;
+        }
+        input, button {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Bill Interest Calculator</h2>
+
+<label>Bill Date:</label>
+<input type="date" id="billDate">
+
+<label>Bill Amount:</label>
+<input type="number" id="billAmount">
+
+<label>Due Days:</label>
+<input type="number" id="dueDays">
+
+<label>Payment Date:</label>
+<input type="date" id="paymentDate">
+
+<label>Monthly Interest Rate (%):</label>
+<input type="number" id="interestRate">
+
+<button onclick="calculateInterest()">Calculate</button>
+
+<div class="result" id="output"></div>
+
+<script>
+function calculateInterest() {
+    const billDate = new Date(document.getElementById("billDate").value);
+    const billAmount = parseFloat(document.getElementById("billAmount").value);
+    const dueDays = parseInt(document.getElementById("dueDays").value);
+    const paymentDate = new Date(document.getElementById("paymentDate").value);
+    const monthlyRate = parseFloat(document.getElementById("interestRate").value);
+
+    if (!billDate || !billAmount || !dueDays || !paymentDate || !monthlyRate) {
+        document.getElementById("output").innerHTML = "Please fill all fields.";
+        return;
+    }
+
+    // Calculate Due Date
+    const dueDate = new Date(billDate);
+    dueDate.setDate(dueDate.getDate() + dueDays);
+
+    // Calculate delay
+    let delayDays = Math.floor((paymentDate - dueDate) / (1000 * 60 * 60 * 24));
+
+    if (delayDays < 0) delayDays = 0;
+
+    // Daily interest rate
+    const dailyRate = monthlyRate / 30;
+
+    // Interest calculation
+    const interest = billAmount * (dailyRate / 100) * delayDays;
+
+    document.getElementById("output").innerHTML = `
+        Due Date: ${dueDate.toDateString()} <br>
+        Delay Days: ${delayDays} <br>
+        Interest: ₹${interest.toFixed(2)} <br>
+        Total Amount: ₹${(billAmount + interest).toFixed(2)}
+    `;
+}
+</script>
+
+</body>
+</html>
