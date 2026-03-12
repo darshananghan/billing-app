@@ -33,6 +33,7 @@ ensure_index()
 # ================= CALCULATION FUNCTION =================
 
 def calculate_interest(bill_date, bill_amount, due_days, payment_date, monthly_rate):
+    interestable_amount = bill_amount * 100 / 105
     due_date = bill_date + timedelta(days=due_days)
     delay_days = (payment_date - due_date).days
 
@@ -40,10 +41,10 @@ def calculate_interest(bill_date, bill_amount, due_days, payment_date, monthly_r
         delay_days = 0
 
     daily_rate = monthly_rate / 30
-    interest = bill_amount * (daily_rate / 100) * delay_days
+    interest = interestable_amount  * (daily_rate / 100) * delay_days
     total_amount = bill_amount + interest
 
-    return delay_days, interest, total_amount
+    return delay_days, interest, interestable_amount
 
 
 # ================= HEADER =================
@@ -89,11 +90,12 @@ if menu == "Interest Calculator":
             bill_date = datetime.strptime(bill_date_str, "%d-%m-%Y")
             payment_date = datetime.strptime(payment_date_str, "%d-%m-%Y")
 
-            delay, interest, total = calculate_interest(
+            delay, interest, interestable_amount = calculate_interest(
                 bill_date, bill_amount, due_days, payment_date, monthly_rate
             )
 
             st.success(f"Delay Days: {delay}")
+            st.success(f"Interestable Amount (GST removed): ₹{interestable_amount:.2f}")
             st.success(f"Interest: ₹{interest:.2f}")
 
         except:
@@ -130,7 +132,7 @@ elif menu == "Store Bill":
             bill_date = datetime.strptime(bill_date_str, "%d-%m-%Y")
             payment_date = datetime.strptime(payment_date_str, "%d-%m-%Y")
 
-            delay, interest, total = calculate_interest(
+            delay, interest, interestable_amount = calculate_interest(
                 bill_date, bill_amount, due_days, payment_date, monthly_rate
             )
 
@@ -139,6 +141,7 @@ elif menu == "Store Bill":
                 "party_name": party_name,
                 "bill_date": bill_date,
                 "bill_amount": bill_amount,
+                "interestable_amount": interestable_amount,
                 "due_days": due_days,
                 "payment_date": payment_date,
                 "monthly_rate": monthly_rate,
